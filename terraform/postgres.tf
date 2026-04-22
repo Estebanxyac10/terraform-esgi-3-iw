@@ -48,6 +48,12 @@ resource "docker_container" "postgres" {
     value = var.project_name
   }
 
+  # Provisioner local-exec : attend que PostgreSQL soit prêt après création (ex 18)
+  # S'exécute uniquement à la création du conteneur (not on destroy)
+  provisioner "local-exec" {
+    command = "until docker exec ${self.name} pg_isready -U ${var.db_user} -d ${var.db_name}; do sleep 2; done"
+  }
+
   lifecycle {
     create_before_destroy = true
   }
