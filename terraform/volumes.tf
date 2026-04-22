@@ -11,4 +11,8 @@ resource "docker_volume" "postgres_data" {
     label = "project"
     value = var.project_name
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

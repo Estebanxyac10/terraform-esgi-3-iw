@@ -11,6 +11,12 @@ resource "docker_image" "postgres" {
   keep_locally = true # Ne pas supprimer l'image au terraform destroy
 }
 
+# Image Adminer (interface web PostgreSQL)
+resource "docker_image" "adminer" {
+  name         = "adminer:latest"
+  keep_locally = true
+}
+
 # Build du user-service à partir du Dockerfile local
 resource "docker_image" "user_service" {
   name = "${var.project_name}/user-service:${var.services_image_tag}"

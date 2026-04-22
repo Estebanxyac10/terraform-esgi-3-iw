@@ -40,7 +40,13 @@ output "container_ids" {
     product_service = docker_container.product_service.id
     order_service   = docker_container.order_service.id
     frontend        = docker_container.frontend.id
+    adminer         = docker_container.adminer.id
   }
+}
+
+output "adminer_url" {
+  description = "URL de l'interface Adminer"
+  value       = "http://localhost:8081"
 }
 
 output "services_ports" {
