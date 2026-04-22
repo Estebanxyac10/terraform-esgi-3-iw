@@ -1,0 +1,22 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Secrets
+.env
+.env.*
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PDF (fichiers générés)
+*.pdf
