@@ -184,7 +184,21 @@
       <li>Le <code>order-service</code> appelle les deux autres services. Identifiez exactement quels appels sont faits, dans quel ordre, et ce qui se passe si l'un d'eux échoue avec un statut 404.</li>
       <li>Chaque service a deux modes de fonctionnement selon la présence ou non de <code>DATABASE_URL</code>. Expliquez la différence de comportement et pourquoi ce pattern est utile pendant le développement.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. Routes HTTP :</strong></p>
+      <ul style="padding-left:1.2rem;margin:0.3rem 0;font-size:0.88rem">
+        <li><em>user-service :</em> GET /health, GET /users, GET /users/:id, POST /users, DELETE /users/:id</li>
+        <li><em>product-service :</em> GET /health, GET /products, GET /products/:id, POST /products, PATCH /products/:id/stock, DELETE /products/:id</li>
+        <li><em>order-service :</em> GET /health, GET /orders, GET /orders/:id, POST /orders</li>
+      </ul>
+      <p><strong>2. Appels inter-services dans POST /orders :</strong></p>
+      <ol style="padding-left:1.2rem;margin:0.3rem 0;font-size:0.88rem">
+        <li>GET <code>user-service/users/:user_id</code> &rarr; si 404 : renvoie immédiatement 404 &laquo;&nbsp;Utilisateur ou produit introuvable&nbsp;&raquo;</li>
+        <li>Pour chaque item : GET <code>product-service/products/:product_id</code> &rarr; si 404 : même réponse</li>
+        <li>Si tout OK : INSERT commande en BDD et retourne 201</li>
+      </ol>
+      <p><strong>3. Modes de fonctionnement :</strong> Avec <code>DATABASE_URL</code> &rarr; Pool PostgreSQL, données persistantes. Sans &rarr; tableaux JS en mémoire (<code>memUsers</code>, etc.), données perdues au redémarrage. Utile en dev : permet de tester les routes sans avoir PostgreSQL de lancé.</p>
+    </div>
   </div>
 </div>
 
@@ -197,7 +211,17 @@
       <li>Tentez de créer une commande avec un <code>user_id</code> inexistant. Quel code HTTP obtenez-vous et pourquoi ?</li>
       <li>Stoppez uniquement le conteneur <code>user-service</code>. Que se passe-t-il si vous tentez de créer une commande ? Relancez le service et expliquez pourquoi <code>restart: unless-stopped</code> ne suffit pas dans ce cas.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>Commandes curl :</strong></p>
+      <pre>curl -X POST http://localhost:3001/users -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@test.com"}'
+curl -X POST http://localhost:3002/products -H "Content-Type: application/json" \
+  -d '{"name":"Laptop Pro","price":999.99,"stock":10}'
+curl -X POST http://localhost:3003/orders -H "Content-Type: application/json" \
+  -d '{"user_id":1,"items":[{"product_id":1,"quantity":2}]}'</pre>
+      <p><strong>user_id inexistant :</strong> Code HTTP <strong>404</strong> &mdash; l'order-service appelle GET /users/:id sur le user-service qui répond 404, et propage cette erreur.</p>
+      <p><strong>user-service stoppé :</strong> POST /orders retourne 500 (axios &rarr; ECONNREFUSED). <code>restart: unless-stopped</code> redémarre après un <em>crash</em> interne, pas après un <code>docker stop</code> manuel. De plus, la dépendance de démarrage n'est vérifiée qu'au lancement initial de Compose.</p>
+    </div>
   </div>
 </div>
 
@@ -210,7 +234,12 @@
       <li>Ajoutez un fichier <code>.dockerignore</code> dans chaque dossier de service. Quels fichiers doit-il exclure et pourquoi ?</li>
       <li>La directive <code>HEALTHCHECK</code> est présente dans les Dockerfiles. Quelle est la différence entre l'état <code>healthy</code>, <code>unhealthy</code> et <code>starting</code> d'un conteneur ? Comment le vérifier ?</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. npm install vs npm ci :</strong> <code>npm ci</code> installe exactement ce qui est dans <code>package-lock.json</code> (reproductible, échoue si le lock est désynchronisé). <code>npm install</code> peut modifier le lock. En production, <code>npm ci</code> garantit des builds reproductibles.</p>
+      <p><strong>2. Optimisation taille :</strong> Ajout de <code>&amp;&amp; npm cache clean --force</code> après <code>npm ci</code> dans les Dockerfiles &rarr; supprime le cache npm (~50&ndash;80 MB) et réduit la taille de l'image. Mesuré avec <code>docker images | grep shopmicrfo</code> avant/après.</p>
+      <p><strong>3. .dockerignore :</strong> Exclure <code>node_modules/</code> (réinstallé dans l'image), <code>.git/</code>, <code>.env</code> (secrets), <code>*.log</code>, <code>Dockerfile</code>, <code>.dockerignore</code>, <code>*.md</code>. Réduit le contexte de build et évite de copier des secrets dans l'image.</p>
+      <p><strong>4. États HEALTHCHECK :</strong> <em>starting</em> = pendant le <code>start_period</code>, les échecs ne font pas basculer ; <em>healthy</em> = tous les checks passent ; <em>unhealthy</em> = <code>retries</code> échecs consécutifs. Vérification : <code>docker inspect --format='{{.State.Health.Status}}' &lt;container&gt;</code></p>
+    </div>
   </div>
 </div>
 
@@ -223,6 +252,20 @@
       <li>Dans <code>docker-compose.yml</code>, les services n'ont pas de configuration <code>networks</code> explicite. Comment Docker Compose détermine-t-il le réseau à créer ?</li>
       <li>Créez manuellement un réseau Docker <code>monitoring_net</code>. Ajoutez dans le <code>docker-compose.yml</code> un service <strong>Adminer</strong> (interface web PostgreSQL) sur le port <code>8081</code>, connecté à la fois au réseau de l'application et à <code>monitoring_net</code>.</li>
     </ol>
+    <div class="answer tall">
+      <p><strong>1. Réseau Docker Compose :</strong> Réseau <code>terraform-esgi-3-iw_default</code> créé automatiquement, driver <code>bridge</code>, sous-réseau assigné dynamiquement (ex : 172.18.0.0/16).</p>
+      <p><strong>2. DNS interne Docker :</strong> Oui, ping par nom fonctionne (<code>ping postgres</code> depuis order-service). Docker Compose assigne le nom de service comme alias DNS. Un résolveur DNS embarqué (127.0.0.11) dans chaque conteneur traduit les noms en IPs réelles.</p>
+      <p><strong>3. Réseau implicite :</strong> Sans configuration <code>networks</code> explicite, Docker Compose crée automatiquement <code>&lt;répertoire_projet&gt;_default</code> et connecte tous les services à ce réseau.</p>
+      <p><strong>4. Adminer ajouté :</strong> <code>docker network create monitoring_net</code> puis ajout dans docker-compose.yml :</p>
+      <pre>adminer:
+  image: adminer:latest
+  ports: ["8081:8080"]
+  networks: [default, monitoring_net]
+  restart: unless-stopped
+networks:
+  monitoring_net:
+    external: true</pre>
+    </div>
   </div>
 </div>
 
@@ -240,7 +283,12 @@
       <li>Lancez <code>terraform validate</code>. Corrigez les erreurs éventuelles.</li>
       <li>Lancez <code>terraform plan</code>. Relevez : combien de ressources vont être créées ? Quels sont les types de ressources distincts ? Y a-t-il des ressources qui dépendent d'autres ? Comment le distinguer dans la sortie du plan ?</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. Fichiers .tf :</strong> <code>main.tf</code> (provider), <code>variables.tf</code> (inputs), <code>locals.tf</code> (valeurs calculées), <code>images.tf</code> (images Docker), <code>network.tf</code> (réseau), <code>postgres.tf</code> (BDD), <code>services.tf</code> (conteneurs), <code>volumes.tf</code> (volumes), <code>outputs.tf</code> (exports), <code>terraform.tfvars</code> (valeurs des variables).</p>
+      <p><strong>2. terraform init :</strong> Télécharge le provider <code>kreuzwerker/docker</code> depuis registry.terraform.io dans <code>.terraform/providers/</code>. Génère <code>.terraform.lock.hcl</code> avec les hash du provider.</p>
+      <p><strong>3. terraform validate :</strong> Valide la syntaxe HCL et les types sans contacter Docker. Résultat : &laquo;&nbsp;Success! The configuration is valid.&nbsp;&raquo;</p>
+      <p><strong>4. terraform plan :</strong> ~15 ressources (images build/pull, conteneurs, réseau, volumes). Types distincts : <code>docker_image</code>, <code>docker_container</code>, <code>docker_network</code>, <code>docker_volume</code>. Dépendances visibles dans l'ordre de création affiché (ex : conteneurs après leur image et le réseau).</p>
+    </div>
   </div>
 </div>
 
@@ -253,7 +301,12 @@
       <li>Ouvrez le fichier <code>terraform.tfstate</code>. Identifiez la structure JSON : que représente un bloc <code>resource</code> dans le state ? Quelle information cruciale y trouve-t-on par rapport au code source ?</li>
       <li>Lancez <code>terraform plan</code> une seconde fois sans rien changer. Que constatez-vous ? Expliquez pourquoi.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. Ordre d'apparition :</strong> Postgres apparaît en premier (réseau + volume créés avant), puis les microservices (user, product), ensuite order-service (dépend de user et product), enfin le frontend. Correspond aux dépendances déclarées.</p>
+      <p><strong>2. terraform output :</strong> Affiche les URLs de chaque service. Application vérifiée via curl sur les ports exposés.</p>
+      <p><strong>3. terraform.tfstate :</strong> Chaque ressource a <code>instances[].attributes</code> avec tous les attributs Docker réels (ID SHA256 du conteneur, IP assignée, network_settings, created_at). Info cruciale absente du code .tf : l'ID unique Docker permettant à Terraform de retrouver la ressource réelle.</p>
+      <p><strong>4. Second plan :</strong> &laquo;&nbsp;No changes. Your infrastructure matches the configuration.&nbsp;&raquo; &mdash; Terraform compare le state et l'infra réelle, aucune différence. Principe d'idempotence.</p>
+    </div>
   </div>
 </div>
 
@@ -266,7 +319,21 @@
       <li>Dans <code>locals.tf</code>, la variable <code>db_url</code> est construite dynamiquement. Expliquez pourquoi une référence à <code>docker_container.postgres.name</code> crée une dépendance implicite. Vérifiez-le dans le graphe de dépendances (<code>terraform graph</code>).</li>
       <li>Ajoutez un local <code>all_service_ports</code> qui construit une map associant le nom de chaque service à son port hôte. Utilisez-le dans un output <code>services_ports</code>.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. sensitive = true :</strong> Dans le plan, la valeur est masquée avec <code>(sensitive value)</code> même quand elle change. Terraform cache la valeur dans tous les logs, mais elle reste présente en clair dans le state.</p>
+      <p><strong>2. Variable restart_policy :</strong></p>
+      <pre>variable "restart_policy" {
+  type    = string
+  default = "unless-stopped"
+  validation {
+    condition     = contains(["always", "unless-stopped", "on-failure"], var.restart_policy)
+    error_message = "Valeurs acceptées : always, unless-stopped, on-failure."
+  }
+}</pre>
+      <p>Utilisée dans tous les conteneurs avec <code>restart = var.restart_policy</code>.</p>
+      <p><strong>3. Dépendance implicite via locals :</strong> <code>local.db_url</code> référence <code>docker_container.postgres.name</code> &rarr; Terraform sait qu'il doit créer postgres avant d'évaluer db_url. Tout conteneur utilisant <code>local.db_url</code> dépend implicitement de postgres. Visible dans <code>terraform graph</code>.</p>
+      <p><strong>4. all_service_ports :</strong> <code>{frontend=8080, user_service=3001, product_service=3002, order_service=3003}</code>. Output <code>services_ports = local.all_service_ports</code> exporté après apply.</p>
+    </div>
   </div>
 </div>
 
@@ -278,7 +345,11 @@
       <li>Supprimez le bloc <code>depends_on</code> de <code>order-service</code>. Lancez <code>terraform plan</code> puis <code>terraform graph</code>. Le comportement change-t-il ?</li>
       <li>Créez un scénario où un <code>depends_on</code> explicite est <strong>indispensable</strong> — c'est-à-dire où aucune référence directe ne crée la dépendance nécessaire. Décrivez ce scénario.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. depends_on redondant :</strong> Non, pas nécessaire. La dépendance implicite existe via <code>local.db_url</code> &rarr; <code>docker_container.postgres.name</code> ET via les env vars <code>USER_SERVICE_URL</code>/<code>PRODUCT_SERVICE_URL</code> qui référencent <code>docker_container.user_service.name</code> et <code>product_service.name</code>.</p>
+      <p><strong>2. Sans depends_on :</strong> <code>terraform graph</code> produit le même résultat, les arcs implicites couvrent déjà toutes les dépendances. Le comportement est identique.</p>
+      <p><strong>3. Scénario indispensable :</strong> Un <code>provisioner &quot;local-exec&quot;</code> sur un conteneur qui exécute des migrations SQL en se connectant à postgres, mais sans référencer aucun attribut de postgres dans sa configuration HCL. Aucune dépendance implicite n'existe &rarr; <code>depends_on = [docker_container.postgres]</code> est indispensable.</p>
+    </div>
   </div>
 </div>
 
@@ -295,7 +366,12 @@
       <li><strong>Scénario de dérive :</strong> Stoppez et supprimez manuellement le conteneur <code>user_service</code> avec <code>docker rm -f ...</code>. Lancez ensuite <code>terraform plan</code>. Que constate Terraform ? Quelle action va-t-il prendre et pourquoi ?</li>
       <li>Lancez <code>terraform apply</code> pour corriger la dérive. Vérifiez que le conteneur est recréé.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. terraform state list :</strong> <code>docker_image.*</code> &rarr; trace l'ID sha256 et le tag. <code>docker_container.*</code> &rarr; ID, état réseau, ports, env. <code>docker_network.*</code> &rarr; ID, driver, IPAM. <code>docker_volume.*</code> &rarr; nom, driver, mountpoint.</p>
+      <p><strong>2. Attributs non définis dans .tf :</strong> <code>id</code> (hash SHA256 complet du conteneur), <code>network_data[0].ip_address</code> (IP assignée), <code>network_data[0].mac_address</code>. Ils viennent du provider Docker qui interroge l'API Docker Engine après création.</p>
+      <p><strong>3. Dérive :</strong> Terraform constate que le conteneur est absent de l'infra réelle mais présent dans le state &rarr; plan affiche &laquo;&nbsp;docker_container.user_service will be created&nbsp;&raquo;. Il va le recréer pour corriger la dérive.</p>
+      <p><strong>4. terraform apply :</strong> Le conteneur est recréé. <code>docker ps</code> confirme qu'il est de nouveau actif et healthy.</p>
+    </div>
   </div>
 </div>
 
@@ -308,7 +384,16 @@
       <li>Importez le conteneur dans le state Terraform avec <code>terraform import</code>. Consultez la documentation du provider pour trouver l'identifiant à utiliser.</li>
       <li>Lancez <code>terraform plan</code>. Y a-t-il des différences entre l'état importé et votre code ? Corrigez-les jusqu'à obtenir un plan vide.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <pre>docker run -d --name shopmicrfo_adminer \
+  --network shopmicrfo_network \
+  -p 8081:8080 adminer:latest
+
+terraform import docker_container.adminer \
+  $(docker inspect -f '{{.Id}}' shopmicrfo_adminer)</pre>
+      <p><strong>adminer.tf :</strong> Ressource <code>docker_container</code> avec <code>name</code>, <code>image</code>, bloc <code>ports</code> (internal=8080, external=8081), <code>networks_advanced</code>, <code>labels</code>. L'identifiant pour <code>terraform import</code> est l'ID SHA256 complet du conteneur (via <code>docker inspect</code>).</p>
+      <p><strong>Après import :</strong> <code>terraform plan</code> peut montrer des différences sur des attributs non spécifiés (ex : <code>restart</code> par défaut Docker vs valeur définie). On corrige le code jusqu'à &laquo;&nbsp;No changes&nbsp;&raquo;.</p>
+    </div>
   </div>
 </div>
 
@@ -320,7 +405,11 @@
       <li>Utilisez <code>terraform taint docker_container.user_service</code> (ou son équivalent moderne). Que fait cette commande ? Vérifiez avec <code>terraform plan</code>.</li>
       <li>Ajoutez un bloc <code>lifecycle { create_before_destroy = true }</code> sur le conteneur postgres. Quel impact cela a-t-il sur la procédure de remplacement du conteneur ? Pourquoi est-ce utile pour un service avec état (stateful) ?</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. lifecycle ignore_changes = [image] :</strong> Avec le bloc &rarr; même si l'image change (nouveau sha256), Terraform ignore cet attribut &rarr; le conteneur n'est PAS recréé. Sans &rarr; Terraform propose de détruire et recréer le conteneur (remplacement forcé).</p>
+      <p><strong>2. terraform taint / -replace :</strong> <code>terraform apply -replace=docker_container.user_service</code> marque la ressource pour recréation inconditionnelle. <code>terraform plan</code> affiche &laquo;&nbsp;must be replaced&nbsp;&raquo; même sans changement de configuration.</p>
+      <p><strong>3. create_before_destroy sur postgres :</strong> Terraform crée le nouveau conteneur AVANT de détruire l'ancien &rarr; le volume reste monté, le service reste disponible pendant la transition. Sans ce bloc : postgres est détruit puis recréé &rarr; downtime. Indispensable pour les services stateful.</p>
+    </div>
   </div>
 </div>
 
@@ -337,7 +426,27 @@
       <li>Vous retirez un service du map <code>for_each</code>. Que se passe-t-il ? Même question avec <code>count</code> si vous retirez un élément au milieu de la liste.</li>
       <li>La variable d'environnement <code>DATABASE_URL</code> est commune à tous les services, mais <code>USER_SERVICE_URL</code> et <code>PRODUCT_SERVICE_URL</code> sont spécifiques à l'order-service. Comment gérez-vous cette différence dans votre ressource <code>for_each</code> ?</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. Réécriture avec for_each :</strong></p>
+      <pre>resource "docker_container" "services" {
+  for_each = local.services
+  name     = "${var.project_name}_${each.key}_service"
+  image    = docker_image.services[each.key].image_id
+  restart  = var.restart_policy
+  env = concat(
+    ["PORT=${each.value.port}", "DATABASE_URL=${local.db_url}"],
+    each.key == "order" ? [
+      "USER_SERVICE_URL=http://...:3001",
+      "PRODUCT_SERVICE_URL=http://...:3002"
+    ] : []
+  )
+}</pre>
+      <p><strong>2. Différence count vs for_each dans le state :</strong><br/>
+      <code>count=3</code> &rarr; adresses <code>docker_container.services[0]</code>, <code>[1]</code>, <code>[2]</code> (index numérique).<br/>
+      <code>for_each</code> &rarr; adresses <code>docker_container.services["user"]</code>, <code>["product"]</code>, <code>["order"]</code> (clé de map).</p>
+      <p><strong>3. Suppression :</strong> Avec <code>for_each</code> &rarr; seul l'élément retiré est détruit, les autres non affectés. Avec <code>count</code> &rarr; retirer un élément au milieu réindexe les suivants &rarr; Terraform détruit et recrée les éléments réindexés (destructif).</p>
+      <p><strong>4. Env spécifiques à order :</strong> Utilisation de <code>concat()</code> + condition <code>each.key == "order"</code> pour ajouter <code>USER_SERVICE_URL</code> et <code>PRODUCT_SERVICE_URL</code> uniquement pour l'order-service.</p>
+    </div>
   </div>
 </div>
 
@@ -349,7 +458,25 @@
       <li>Dans <code>images.tf</code>, le hash de déclenchement de rebuild est construit avec <code>sha256(join(...))</code>. Expliquez le rôle de ce mécanisme. Que se passe-t-il si vous modifiez <code>src/index.js</code> du user-service et relancez <code>terraform apply</code> ?</li>
       <li>Utilisez la fonction <code>toset()</code> pour créer un volume Docker par service (user, product, order) en une seule ressource <code>docker_volume</code> avec <code>for_each</code>. Ces volumes resteront vides pour l'instant.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. expose_postgres conditionnel avec dynamic :</strong></p>
+      <pre>dynamic "ports" {
+  for_each = var.expose_postgres ? [1] : []
+  content {
+    internal = 5432
+    external = var.postgres_port
+  }
+}</pre>
+      <p>Avec <code>expose_postgres=false</code> : <code>terraform plan</code> montre la suppression du bloc ports &rarr; port 5432 inaccessible depuis l'hôte.</p>
+      <p><strong>2. sha256(join(...)) :</strong> Hash des contenus sources. Si un fichier change, le hash change &rarr; le champ <code>triggers</code> de <code>docker_image</code> change &rarr; Terraform rebuild l'image. En modifiant <code>src/index.js</code> : trigger mis à jour &rarr; image reconstruit &rarr; conteneur recréé.</p>
+      <p><strong>3. toset() pour volumes :</strong></p>
+      <pre>resource "docker_volume" "service_volumes" {
+  for_each = toset(["user", "product", "order"])
+  name     = "${var.project_name}_${each.key}_data"
+  labels { label = "service"; value = each.key }
+}</pre>
+      <p>Adresses Terraform : <code>docker_volume.service_volumes["user"]</code>, <code>["product"]</code>, <code>["order"]</code>.</p>
+    </div>
   </div>
 </div>
 
@@ -365,7 +492,11 @@
       <li>Réécrivez <strong>un seul service</strong> (au choix) dans <code>services.tf</code> pour qu'il utilise ce module au lieu d'une ressource directe. Vérifiez avec <code>terraform plan</code> que le résultat est un remplacement (ou idéalement aucune modification si les attributs sont identiques).</li>
       <li>Le module contient un <code>lifecycle { ignore_changes = [image] }</code>. Quand cette règle est-elle problématique ? Proposez une solution pour permettre de forcer le remplacement de l'image depuis l'appelant du module sans modifier le module lui-même.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. Inputs :</strong> <code>name</code>, <code>image_id</code>, <code>internal_port</code>, <code>external_port</code>, <code>network_name</code>, <code>env_vars</code>, <code>project_name</code>, <code>depends_on_containers</code>. <strong>Outputs :</strong> <code>container_name</code>, <code>container_id</code>. Ce que le module ne gère pas : le build de l'image (passée en paramètre), les <code>depends_on</code> dynamiques entre conteneurs.</p>
+      <p><strong>2. Réécriture avec module :</strong> <code>module "user_service" { source = "./modules/microservice"; name = "user-service"; image_id = docker_image.user_service.image_id; ... }</code>. Plan idéalement vide si tous les attributs sont identiques.</p>
+      <p><strong>3. ignore_changes problématique :</strong> Lors d'un déploiement de nouvelle version, le conteneur ne sera pas recréé même si l'image change. Solution sans modifier le module : <code>terraform apply -replace=module.user_service.docker_container.service</code>.</p>
+    </div>
   </div>
 </div>
 
@@ -379,7 +510,23 @@
       <li>Exposez en output : <code>container_name</code>, <code>container_id</code>, <code>image_id</code>, <code>volume_name</code> (null si pas de volume).</li>
       <li>Remplacez les ressources du <code>user-service</code> dans le code principal par un appel à ce module. Vérifiez que le plan ne crée aucune ressource supplémentaire.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>Module service-stack créé dans <code>modules/service-stack/</code> :</strong></p>
+      <p><strong>variables.tf :</strong> <code>name</code>, <code>build_context</code>, <code>dockerfile_path</code>, <code>internal_port</code>, <code>external_port</code>, <code>network_name</code>, <code>env_vars</code>, <code>project_name</code>, <code>image_tag</code>, <code>restart_policy</code>, <code>enable_volume</code> (bool, défaut false), <code>source_files</code>.</p>
+      <p><strong>main.tf :</strong> <code>docker_image</code> avec triggers <code>filesha256</code>, <code>docker_container</code> avec <code>lifecycle { ignore_changes = [image] }</code>, <code>docker_volume</code> avec <code>count = var.enable_volume ? 1 : 0</code>.</p>
+      <p><strong>outputs.tf :</strong> <code>container_name</code>, <code>container_id</code>, <code>image_id</code>, <code>volume_name</code> (null si pas de volume).</p>
+      <pre>module "user_service" {
+  source        = "./modules/service-stack"
+  name          = "user-service"
+  build_context = "${path.root}/../services/user-service"
+  internal_port = 3001
+  external_port = var.user_service_port
+  network_name  = docker_network.app.name
+  env_vars      = ["PORT=3001", "DATABASE_URL=${local.db_url}"]
+  project_name  = var.project_name
+  enable_volume = false
+}</pre>
+    </div>
   </div>
 </div>
 
@@ -396,7 +543,12 @@
       <li>Avec le <code>lifecycle { ignore_changes = [image] }</code> actif dans le module, expliquez pourquoi le conteneur <strong>ne sera pas recréé</strong> même si l'image change. Comment forcer la recréation ?</li>
       <li>Après l'apply, vérifiez que la nouvelle version du service répond correctement. Utilisez <code>docker inspect</code> pour confirmer quelle image est utilisée par le conteneur.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. Ajout champ role :</strong> Schéma SQL modifié (colonne <code>role VARCHAR(50) DEFAULT 'user'</code>), <code>POST /users</code> accepte <code>role</code> dans le body, routes GET retournent le champ <code>role</code>.</p>
+      <p><strong>2. services_image_tag = &laquo;&nbsp;v2&nbsp;&raquo; :</strong> Le nom de l'image change &rarr; le trigger sha256 change &rarr; <code>docker_image</code> est recréé &rarr; <code>image_id</code> change &rarr; le conteneur est marqué pour remplacement. Plus que juste le conteneur : l'image est aussi reconstruite.</p>
+      <p><strong>3. lifecycle ignore_changes = [image] :</strong> Terraform ignore les modifications de l'attribut <code>image</code> &rarr; le conteneur tourne encore avec l'ancienne image malgré le rebuild. Pour forcer : <code>terraform apply -replace=docker_container.user_service</code>.</p>
+      <p><strong>4. Vérification :</strong> <code>curl http://localhost:3001/users</code> &rarr; champ <code>role</code> présent. <code>docker inspect shopmicrfo_user_service | grep Image</code> &rarr; confirme le sha256 de l'image active.</p>
+    </div>
   </div>
 </div>
 
@@ -409,7 +561,17 @@
       <li>Ajoutez un bloc <code>lifecycle { prevent_destroy = true }</code> sur la ressource <code>docker_volume.postgres_data</code>. Testez <code>terraform destroy</code>. Que se passe-t-il ? Comment contourner cette protection quand c'est vraiment nécessaire ?</li>
       <li>Supprimez <strong>uniquement</strong> les conteneurs sans toucher au volume ni aux images. Écrivez la ou les commandes <code>terraform</code> permettant de cibler des ressources spécifiques.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. terraform destroy + prevent_destroy :</strong> Sans le bloc lifecycle, le volume <code>postgres_data</code> est supprimé par le provider Docker et les données sont perdues. Avec <code>lifecycle { prevent_destroy = true }</code> : Terraform refuse et affiche une erreur.</p>
+      <p><strong>2. terraform apply après destroy :</strong> Si le volume existe encore (prevent_destroy ou conservé manuellement), PostgreSQL retrouve ses fichiers dans <code>/var/lib/postgresql/data</code> &rarr; données restaurées. Le provider ne supprime pas les volumes nommés sauf si <code>force_destroy = true</code>.</p>
+      <p><strong>3. Contournement :</strong> Commenter temporairement le bloc <code>lifecycle</code>, appliquer les changements, puis relancer destroy. Ou modifier <code>force_destroy = true</code>.</p>
+      <p><strong>4. Cibler uniquement les conteneurs :</strong></p>
+      <pre>terraform destroy -target=docker_container.postgres \
+  -target=docker_container.user_service \
+  -target=docker_container.product_service \
+  -target=docker_container.order_service \
+  -target=docker_container.frontend</pre>
+    </div>
   </div>
 </div>
 
@@ -422,7 +584,16 @@
       <li>Testez le comportement : détruisez le conteneur postgres et relancez <code>terraform apply</code>. Le provisioner est-il exécuté lors de la recréation ?</li>
       <li>Pourquoi les provisioners sont-ils considérés comme un "last resort" en Terraform ? Proposez une alternative pour l'initialisation de schéma de base de données.</li>
     </ol>
-    <div class="answer"></div>
+    <div class="answer">
+      <p><strong>1. Philosophie Terraform :</strong> Les provisioners sont un &laquo;&nbsp;last resort&nbsp;&raquo; : Terraform ne peut pas tracker leur exécution dans le state &rarr; non idempotent. En cas d'échec, la ressource est marquée &laquo;&nbsp;tainted&nbsp;&raquo;. Préférer les ressources natives du provider.</p>
+      <p><strong>2. local-exec sur postgres :</strong></p>
+      <pre>provisioner "local-exec" {
+  command = "until docker exec ${self.name} pg_isready -U ${var.db_user} -d ${var.db_name}; do sleep 2; done"
+}</pre>
+      <p>S'exécute uniquement à la création (comportement par défaut, pas sur destroy).</p>
+      <p><strong>3. Lors de la recréation :</strong> Oui, le provisioner est réexécuté car c'est une nouvelle création de ressource (destroy + create déclenche le provisioner).</p>
+      <p><strong>4. Alternatives :</strong> Utiliser un outil de migration dédié (Flyway, Liquibase) déclenché par le pipeline CI/CD, ou un init container exécutant les migrations avant les services. Avantages : idempotence, versionning du schéma, rollback possible.</p>
+    </div>
   </div>
 </div>
 
@@ -593,7 +764,26 @@
       <li><strong>Dérive volontaire :</strong> Après l'apply, renommez manuellement le conteneur <code>notification-service</code> en modifiant son label avec <code>docker rename</code>. Lancez <code>terraform plan</code>. Que se passe-t-il ? Pourquoi Terraform ne détecte-t-il pas le changement de nom ? Quelle commande permet de forcer la resynchronisation ?</li>
       <li><strong>Refactoring :</strong> Le code de création de table PostgreSQL est dupliqué dans tous les services (appel à <code>pool.query(CREATE TABLE IF NOT EXISTS ...)</code> dans <code>initDb()</code>). Proposez une architecture alternative pour centraliser la gestion du schéma de base de données. Vous n'avez pas à l'implémenter, mais décrivez la solution et ses avantages.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1–3. Service créé :</strong> <code>services/notification-service/</code> avec <code>src/index.js</code> (GET /health, POST /notify, GET /notifications, GET /notifications/:user_id &mdash; mode mémoire + PostgreSQL), <code>Dockerfile</code> (node:20-alpine + HEALTHCHECK), <code>package.json</code>, <code>package-lock.json</code>, <code>.dockerignore</code>. Ajouté dans <code>docker-compose.yml</code> (dépend de postgres + user-service). Terraform : <code>docker_image.notification_service</code>, <code>docker_container.notification_service</code>, <code>var.notification_service_port</code>, <code>output.notification_service_url</code>. Plan : +2 ressources.</p>
+      <p><strong>4. Test end-to-end :</strong></p>
+      <pre>curl -X POST http://localhost:3001/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@test.com"}'
+# -&gt; {"id":1,"name":"Alice","role":"user",...}
+
+curl -X POST http://localhost:3004/notify \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1,"message":"Bienvenue !"}'
+curl -X POST http://localhost:3004/notify \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":1,"message":"Commande confirmée."}'
+
+curl http://localhost:3004/notifications/1
+# -&gt; [{"id":1,"user_id":1,"message":"Bienvenue !",...},{"id":2,...}]</pre>
+      <p><strong>5. Dérive docker rename :</strong> Terraform identifie les conteneurs par leur <strong>ID SHA256</strong>, pas leur nom. <code>docker rename</code> change le nom mais pas l'ID &rarr; Terraform ne détecte aucune différence. Resynchronisation : <code>terraform refresh</code> (ou <code>terraform apply -refresh-only</code>).</p>
+      <p><strong>6. Refactoring schéma :</strong> Créer un init container dédié qui exécute toutes les migrations avant le démarrage des services, ou utiliser Flyway/Liquibase comme outil de migration centralisé. Avantages : un seul point de vérité pour le schéma, migrations versionnées, rollback possible, pas de duplication.</p>
+    </div>
   </div>
 </div>
 
@@ -607,7 +797,12 @@
       <li>Dans <code>images.tf</code>, le trigger de rebuild est calculé avec <code>sha256(join(...))</code> sur trois fichiers. Quel fichier important lié aux dépendances Node.js n'est pas inclus dans ce calcul ? Quelles conséquences cela peut-il avoir ? Corrigez le trigger.</li>
       <li>La variable <code>db_password</code> a la valeur par défaut <code>"shoppassword"</code> dans <code>terraform.tfvars</code>. Proposez un mécanisme Terraform permettant d'obliger l'opérateur à fournir explicitement un mot de passe en production, sans valeur par défaut possible.</li>
     </ol>
-    <div class="answer tall"></div>
+    <div class="answer tall">
+      <p><strong>1. terraform.tfstate et mot de passe :</strong> Oui, le mot de passe est présent <strong>en clair</strong> dans le state, dans les attributs <code>env</code> des conteneurs utilisant DATABASE_URL. <code>sensitive = true</code> masque la valeur dans les logs/plan mais PAS dans le state. Conclusion : le state doit être chiffré (backend S3 avec SSE, Terraform Cloud) et ne jamais être commité en git.</p>
+      <p><strong>2. Port 5432 exposé :</strong> Oui, depuis la machine hôte : <code>psql -h localhost -p 5432 -U shopuser -d shopdb</code> fonctionne. Risque : accès direct à la BDD sans passer par les API des microservices, modification non contrôlée des données. Correction : supprimer le bloc <code>ports</code> du conteneur postgres ou utiliser <code>expose_postgres = false</code> en production.</p>
+      <p><strong>3. package-lock.json manquant :</strong> Si les dépendances Node.js changent (npm met à jour package-lock.json) mais que Dockerfile et index.js restent identiques, le trigger sha256 ne change pas &rarr; l'image n'est pas rebuildée &rarr; ancienne version des dépendances en production. Correction : ajouter <code>filesha256("package-lock.json")</code> dans les triggers (implémenté dans notre code).</p>
+      <p><strong>4. Obliger à fournir le mot de passe :</strong> Supprimer la valeur <code>default</code> de <code>db_password</code> dans <code>variables.tf</code>. Terraform refusera de planifier sans valeur fournie. En production, utiliser la variable d'environnement <code>TF_VAR_db_password</code> ou un système de secrets (HashiCorp Vault, AWS Secrets Manager via data source).</p>
+    </div>
   </div>
 </div>
 
