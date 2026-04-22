@@ -91,3 +91,9 @@ variable "restart_policy" {
     error_message = "La valeur doit être 'always', 'unless-stopped' ou 'on-failure'."
   }
 }
+
+variable "expose_postgres" {
+  description = "Expose le port PostgreSQL 5432 sur l'hôte (debug uniquement, désactiver en production)"
+  type        = bool
+  default     = true
+}
