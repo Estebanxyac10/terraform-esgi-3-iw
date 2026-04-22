@@ -1,0 +1,306 @@
+/* =============================================================================
+   ShopMicro — Feuille de styles externe
+   ============================================================================= */
+
+/* Reset & base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.5;
+}
+
+/* ---- Header ---- */
+header {
+  background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+header .subtitle {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ---- Navigation ---- */
+nav {
+  background: #0f3460;
+  display: flex;
+  gap: 0;
+  border-bottom: 3px solid #e94560;
+}
+
+nav button {
+  background: none;
+  border: none;
+  color: #adb5bd;
+  padding: 0.9rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+nav button::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #e94560;
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+
+nav button.active,
+nav button:hover {
+  background: rgba(233, 69, 96, 0.15);
+  color: white;
+}
+
+nav button.active::after {
+  transform: scaleX(1);
+}
+
+/* ---- Main content ---- */
+main {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* ---- Cards ---- */
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  border: 1px solid #eee;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+  margin-bottom: 1rem;
+  font-size: 1.05rem;
+  color: #16213e;
+  border-bottom: 2px solid #e94560;
+  padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- Forms ---- */
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+input,
+select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 120px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: #e94560;
+  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+}
+
+/* ---- Buttons ---- */
+button.btn {
+  padding: 0.5rem 1.2rem;
+  background: #e94560;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+button.btn:hover {
+  background: #c73652;
+  transform: translateY(-1px);
+}
+
+button.btn:active {
+  transform: translateY(0);
+}
+
+button.btn-danger {
+  background: #dc3545;
+}
+
+button.btn-danger:hover {
+  background: #bb2d3b;
+}
+
+/* ---- Tables ---- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #f8f9fa;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: #fafbfc;
+}
+
+/* ---- Badges ---- */
+.badge {
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-pending {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffe69c;
+}
+
+.badge-completed {
+  background: #d1e7dd;
+  color: #0a3622;
+  border: 1px solid #a3cfbb;
+}
+
+/* ---- Status dots ---- */
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  animation: pulse 2s infinite;
+}
+
+.dot-ok {
+  background: #28a745;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+}
+
+.dot-err {
+  background: #dc3545;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+#service-status {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+/* ---- Tab content ---- */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Empty state ---- */
+.empty {
+  text-align: center;
+  color: #adb5bd;
+  padding: 3rem 2rem;
+  font-style: italic;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  header {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+  }
+
+  #service-status {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  nav button {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  main {
+    margin: 1rem auto;
+  }
+}

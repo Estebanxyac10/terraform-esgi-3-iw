@@ -4,44 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ShopMicro — Microservices Demo</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
-    header { background: #16213e; color: white; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
-    header h1 { font-size: 1.5rem; }
-    header span { background: #0f3460; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; }
-    nav { background: #0f3460; display: flex; gap: 0; }
-    nav button { background: none; border: none; color: #aaa; padding: 0.9rem 1.5rem; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; }
-    nav button.active, nav button:hover { background: #e94560; color: white; }
-    main { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
-    .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .card h2 { margin-bottom: 1rem; font-size: 1.1rem; color: #16213e; border-bottom: 2px solid #e94560; padding-bottom: 0.5rem; }
-    .form-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    input, select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; flex: 1; min-width: 120px; }
-    button.btn { padding: 0.5rem 1.2rem; background: #e94560; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-    button.btn:hover { background: #c73652; }
-    button.btn-danger { background: #dc3545; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th { background: #f8f9fa; text-align: left; padding: 0.6rem 0.8rem; border-bottom: 2px solid #dee2e6; }
-    td { padding: 0.6rem 0.8rem; border-bottom: 1px solid #f0f0f0; }
-    tr:hover td { background: #f8f9fa; }
-    .badge { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-    .badge-pending { background: #fff3cd; color: #856404; }
-    .badge-completed { background: #d1e7dd; color: #0a3622; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-    .dot-ok { background: #28a745; }
-    .dot-err { background: #dc3545; }
-    #service-status { display: flex; gap: 1rem; font-size: 0.8rem; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .empty { text-align: center; color: #999; padding: 2rem; }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
 <header>
   <h1>ShopMicro</h1>
-  <span>Architecture Microservices</span>
+  <span class="subtitle">Architecture Microservices</span>
   <div style="margin-left:auto;" id="service-status">
     <span><span class="status-dot" id="dot-user"></span>user-service</span>
     <span><span class="status-dot" id="dot-product"></span>product-service</span>
