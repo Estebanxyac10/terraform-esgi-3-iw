@@ -40,6 +40,12 @@ variable "order_service_port" {
   default     = 3003
 }
 
+variable "notification_service_port" {
+  description = "Port hôte pour accéder au notification-service"
+  type        = number
+  default     = 3004
+}
+
 variable "postgres_port" {
   description = "Port hôte pour accéder à PostgreSQL (debug uniquement)"
   type        = number

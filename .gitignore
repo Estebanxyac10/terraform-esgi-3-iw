@@ -4,6 +4,8 @@
 *.tfstate.*
 *.tfstate.backup
 .terraform.lock.hcl
+*.tfvars
+!terraform.tfvars.example
 
 # Node.js
 node_modules/
@@ -17,6 +19,3 @@ secrets/
 # OS
 .DS_Store
 Thumbs.db
-
-# PDF (fichiers générés)
-*.pdf

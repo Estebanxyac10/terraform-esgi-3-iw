@@ -32,6 +32,7 @@ resource "docker_image" "user_service" {
       filesha256("${path.root}/../services/user-service/Dockerfile"),
       filesha256("${path.root}/../services/user-service/src/index.js"),
       filesha256("${path.root}/../services/user-service/package.json"),
+      filesha256("${path.root}/../services/user-service/package-lock.json"),
     ]))
   }
 }
@@ -49,6 +50,7 @@ resource "docker_image" "product_service" {
       filesha256("${path.root}/../services/product-service/Dockerfile"),
       filesha256("${path.root}/../services/product-service/src/index.js"),
       filesha256("${path.root}/../services/product-service/package.json"),
+      filesha256("${path.root}/../services/product-service/package-lock.json"),
     ]))
   }
 }
@@ -66,6 +68,7 @@ resource "docker_image" "order_service" {
       filesha256("${path.root}/../services/order-service/Dockerfile"),
       filesha256("${path.root}/../services/order-service/src/index.js"),
       filesha256("${path.root}/../services/order-service/package.json"),
+      filesha256("${path.root}/../services/order-service/package-lock.json"),
     ]))
   }
 }
@@ -83,6 +86,24 @@ resource "docker_image" "frontend" {
       filesha256("${path.root}/../services/frontend/Dockerfile"),
       filesha256("${path.root}/../services/frontend/src/index.html"),
       filesha256("${path.root}/../services/frontend/nginx.conf"),
+    ]))
+  }
+}
+
+resource "docker_image" "notification_service" {
+  name = "${var.project_name}/notification-service:${var.services_image_tag}"
+
+  build {
+    context    = "${path.root}/../services/notification-service"
+    dockerfile = "Dockerfile"
+  }
+
+  triggers = {
+    source_hash = sha256(join("", [
+      filesha256("${path.root}/../services/notification-service/Dockerfile"),
+      filesha256("${path.root}/../services/notification-service/src/index.js"),
+      filesha256("${path.root}/../services/notification-service/package.json"),
+      filesha256("${path.root}/../services/notification-service/package-lock.json"),
     ]))
   }
 }

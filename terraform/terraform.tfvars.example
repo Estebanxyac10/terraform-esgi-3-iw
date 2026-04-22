@@ -1,0 +1,25 @@
+# Copiez ce fichier en terraform.tfvars et renseignez vos valeurs
+# NE JAMAIS commiter terraform.tfvars dans git (contient des secrets)
+
+project_name = "shopmicrfo"
+
+# Ports hôte
+frontend_port             = 8080
+user_service_port         = 3001
+product_service_port      = 3002
+order_service_port        = 3003
+notification_service_port = 3004
+postgres_port             = 5432
+
+# Base de données — fournir une valeur forte en production
+db_name     = "shopdb"
+db_user     = "shopuser"
+db_password = "CHANGE_ME_IN_PRODUCTION"
+
+# Images
+postgres_image_tag  = "16-alpine"
+services_image_tag  = "latest"
+
+# Comportement
+restart_policy  = "unless-stopped"
+expose_postgres = true

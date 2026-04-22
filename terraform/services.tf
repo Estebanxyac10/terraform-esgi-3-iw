@@ -134,3 +134,40 @@ resource "docker_container" "frontend" {
     value = "frontend"
   }
 }
+
+resource "docker_container" "notification_service" {
+  name  = "${var.project_name}_notification_service"
+  image = docker_image.notification_service.image_id
+
+  restart = var.restart_policy
+
+  env = [
+    "PORT=3004",
+    "DATABASE_URL=${local.db_url}",
+    "USER_SERVICE_URL=http://${docker_container.user_service.name}:3001",
+  ]
+
+  ports {
+    internal = 3004
+    external = var.notification_service_port
+  }
+
+  networks_advanced {
+    name = docker_network.app.name
+  }
+
+  depends_on = [
+    docker_container.postgres,
+    docker_container.user_service,
+  ]
+
+  labels {
+    label = "project"
+    value = var.project_name
+  }
+
+  labels {
+    label = "service"
+    value = "notification-service"
+  }
+}

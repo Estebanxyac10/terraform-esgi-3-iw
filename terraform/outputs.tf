@@ -22,6 +22,11 @@ output "order_service_url" {
   value       = "http://localhost:${var.order_service_port}"
 }
 
+output "notification_service_url" {
+  description = "URL du notification-service"
+  value       = "http://localhost:${var.notification_service_port}"
+}
+
 output "network_name" {
   description = "Nom du réseau Docker créé"
   value       = docker_network.app.name
@@ -35,12 +40,13 @@ output "postgres_container_name" {
 output "container_ids" {
   description = "IDs de tous les conteneurs gérés par Terraform"
   value = {
-    postgres        = docker_container.postgres.id
-    user_service    = docker_container.user_service.id
-    product_service = docker_container.product_service.id
-    order_service   = docker_container.order_service.id
-    frontend        = docker_container.frontend.id
-    adminer         = docker_container.adminer.id
+    postgres             = docker_container.postgres.id
+    user_service         = docker_container.user_service.id
+    product_service      = docker_container.product_service.id
+    order_service        = docker_container.order_service.id
+    frontend             = docker_container.frontend.id
+    adminer              = docker_container.adminer.id
+    notification_service = docker_container.notification_service.id
   }
 }
 
